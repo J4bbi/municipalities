@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Population of Icelandic municipalities 1910-2013</title>
+    
+    <meta property="og:title" content="Population of Icelandic municipalities 1910-2013">
+    <meta property="og:description" content="Color coded map showing the evolution of the boundaries of municipalities in Iceland and their population between 1910-2013.">
+    <meta property="og:image" content="http://bigdatapatterns.co.uk/sveitarfelog_screen.png">
+    <meta property="og:url" content="http://bigdatapatterns.co.uk/municipalities">
+
+	<script src="http://d3js.org/d3.v4.min.js" charset="utf-8"></script>
+	<script src="//d3js.org/topojson.v1.min.js"></script>
+    <!-- Add the slick-theme.css if you want default styling -->
+    <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.css"/>
+    <!-- Add the slick-theme.css if you want default styling -->
+    <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick-theme.css"/>
+	<style>
+    
+    body {
+        margin: 0;
+        margin-top: 20px;
+    }
+
+    .background {
+         fill: none;
+         pointer-events: all;
+    }
+
+    .active {
+        fill: orange;
+    }
+
+    #slick {
+        width: 110px;
+        vertical-align: middle;
+    }
+
+    .slick-slider {
+        display: inline-block;
+    }
+
+    .slick-prev {
+        display: block;
+        top: 0px;
+        left: 0px;
+        position: relative;
+        transform: translate(0,0) scale(2.5);
+        margin-right: 10px;
+    }
+
+    .slick-next {
+        top: 0px;
+        left: 0px;
+        position: relative;
+        transform: translate(0,0) scale(2.5);
+        margin-left: 10px;
+    }
+
+    .slick-prev:before, .slick-next:before { 
+        color:black !important;
+    }
+
+    .years {
+        text-align: center;
+        font-size: 32pt;
+
+    }
+
+    @media all and (max-width: 1400px)  {
+
+        #info {
+            display:inline-block;
+            margin: 0 auto;
+            font-size: 24pt;
+        }
+
+        #info2 {
+            width: 25%;
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 16pt;
+        }
+
+        .bits {
+            display:inline-block;
+            vertical-align: middle;
+            font-size: 24pt;
+        }
+
+    }
+
+    @media all and (min-width: 1401px)  {
+
+        #info {
+            display:inline-block;
+            margin: 0 auto;
+            font-size: 36pt;
+        }
+
+        #info2 {
+            width: 25%;
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 24pt;
+        }
+
+        .bits {
+            display:inline-block;
+            vertical-align: middle;
+            font-size: 32pt;
+        }
+
+    }
+
+    .play {
+        transform: scale(1.2);
+        opacity: .75;
+        cursor: pointer;
+    }
+
+    .play:hover {
+        opacity: 1;
+    }
+
+
+</style>
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+</head>
+<body>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.min.js"></script>
+
+<div style="width: 100%; text-align:center; display: flex;"> 
+    <div style="width: 25%; display: inline-block;"><div id="info">
+        <div class="bits"><button type="button" class="slick-prev">Previous</button></div>
+        <div id="slick">
+          <div class="years">1910</div>
+          <div class="years">1930</div>
+          <div class="years">1950</div>
+          <div class="years">1970</div>
+          <div class="years">1990</div>
+          <div class="years">2001</div>
+          <div class="years">2013</div>
+        </div>   
+        <div class="bits"><button type="button" class="slick-next">Next</button></div>
+        <div style="margin-left: 20px;" class="bits"><buton class="fa fa-pause-circle play" aria-hidden="true" onclick="toggle(this);"></button></div>
+    </div></div>
+
+    <div class="bits" style="width: 50%">Population of Icelandic municipalities</div>
+    <div id="info2"></div>
+</div>
+<div style="width: 100%; text-align: center; border-bottom: 1px dotted #000; font-size: 24pt;">    
+    
+    <div id="info3">&nbsp;</div>
+</div>
+
+<!-- Page elements and content go here. -->
+	<script>
+
+// Width and Height of the whole visualization
+var width = document.body.clientWidth, //window.innerWidth,
+    height = window.innerHeight, //window.innerHeight,
+    centered;
+
+// Create SVG
+var svg = d3.select( "body" )
+    .append( "svg" )
+    .attr( "width", width )
+    .attr( "height", height) 
+
+// Rect for zoom on click
+svg.append("rect")
+    .attr("class", "background")
+    .attr("width", width)
+    .attr("height", height)
+    .on("click", clicked);
+
+// Append empty placeholder g element to the SVG
+// g will contain geometry elements
+var g = svg.append( "g" );
+
+// Info
+var info = d3.select('#info2');
+
+// Info2
+var info2 = d3.select('#info3');
+    
+// Legend
+var legend = g.append("g");
+
+// Set Projection Parameters
+var projection = d3.geoConicConformal()
+	.center([-1.0, 64.5])
+//	.parallels([63, 68])
+    .rotate([18, 0])
+    .translate( [width/2,height/2] );
+
+// Create GeoPath function that uses built-in D3 functionality to turn
+// lat/lon coordinates into screen coordinates
+var geoPath = d3.geoPath()
+    .projection(projection);
+
+var years = [1910, 1930, 1950, 1970, 1990, 2001, 2013];
+var year = years[0];
+
+d3.json("iceland-" + year + "-simple2.json", process);
+
+var colors = ['#fff', '#f0f9e8','#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#08589e'];
+var cutoffs = ['No data', 100, 250, 500, 1000, 5000, 10000, 0];
+
+function legendText() {
+    if(i == cutoffs.length-1) { 
+        return " > " + cutoffs[i-1];
+     } else if(parseInt(cutoffs[i])) { 
+        return (i == 1) ? "0 - " + cutoffs[i] : cutoffs[i-1] + " - " + cutoffs[i];
+     } else {
+        return cutoffs[i];
+    }
+}
+
+var legendFactor = 32;
+var duration = 2500;
+
+for(var i = 0; i < cutoffs.length; i++) {
+    legend.append("rect")
+        .attr("fill", colors[i])
+        .attr("width", height/legendFactor)
+        .attr("height", height/legendFactor)
+        .attr("x", height/legendFactor*2)
+        .attr("stroke", "#999")
+        .attr("y", (i * (height/legendFactor)) + height/legendFactor*2);
+
+    legend.append("text")
+        .attr("x", (3*(height/legendFactor)))
+        .attr("y", (i * (height/legendFactor)) + height/legendFactor*2)
+        .attr("dx", "10px")
+        .attr("dy", (height/legendFactor)/1.5 )
+        .attr("font-family", "arial")
+        .attr("font-size", (height/legendFactor)/2 + "px")        
+        .text(legendText);
+}
+
+colors.shift();
+cutoffs.shift();
+
+function getFill(d) {
+    for(var i = 0; i < cutoffs.length+1; i++) {
+        if(!d.properties.IBUAFJOLDI)
+            return "#fff";
+        else if(i == cutoffs.length)
+            return colors[i-1];
+        else if(cutoffs[i] >= parseInt(d.properties.IBUAFJOLDI))
+            return colors[i];
+    }
+}
+
+function process(data)	{
+    var heildarfjoldi = 0;
+
+    data.objects["iceland-" + year].geometries.forEach(function(d) { if(d.properties.IBUAFJOLDI) { heildarfjoldi += d.properties.IBUAFJOLDI; } });
+
+    info.html("Municipalities: " + data.objects["iceland-" + year].geometries.length + "</br>Population: " + addDot(heildarfjoldi));
+
+    var featureCollection = topojson.feature(data, data.objects["iceland-" + year]);
+
+    // Compute the feature bounds and centroid
+    // http://bl.ocks.org/pnavarrc/62047b5638d624cfa9cb
+    var bounds = d3.geoBounds(featureCollection);//,
+        //center = d3.geoCentroid(featureCollection);
+
+    var distance = d3.geoDistance(bounds[0], bounds[1]),
+        scale = height / distance;
+    
+    // Update the projection scale and centroid
+    projection.scale(scale);
+
+	// Data join
+    var paths = g.selectAll( "path" ).data( featureCollection.features, function(d) { return d.properties.NRSVEITARF + "-" + year; } );
+
+    // Remove redundant municipalities immediately
+    paths.exit()
+        .transition()
+        .duration(duration/2)
+        .style("opacity", 0)
+        .remove();
+
+    // Update municipalities
+    paths.transition()
+        .duration(duration/2)
+        .attr( "fill", getFill )
+        .attr( "d", geoPath );
+
+    // Enter
+    paths.enter()        
+        .append( "path" )
+        .on("mouseover", function(d) { 
+            d3.select(this).attr('fill', 'red');
+            d3.select(this).style('cursor', 'pointer');
+            info2.text((d.properties.IBUAFJOLDI) ? d.properties.SVEITARFEL + ": " + addDot(d.properties.IBUAFJOLDI) + " (" + prettyPercent(d.properties.IBUAHLUTFALL, 2) + "%), " + addDot(Math.round(d.properties.SHAPE_Area/1000000)) + " km²": d.properties.SVEITARFEL) + ", " + addDot(Math.round(d.properties.SHAPE_Area/1000000)) + "km²"; })
+        .on("mouseout", function(d) { 
+            d3.select(this).attr('fill', getFill(d));
+            d3.select(this).style('cursor', 'default'); })
+        .on("click", clicked)        
+        .attr( "fill", getFill )
+        .attr( "stroke", "#333")        
+        .style("opacity", 0)
+        .attr( "d", geoPath )
+        .transition()
+        .duration(duration)
+        .style("opacity", 1);
+
+}
+
+
+function prettyPercent(p, n)   {
+    return Math.round(parseFloat(p) * Math.pow(10, n+2))/Math.pow(10,n);
+}
+
+function addDot(n)   {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+// https://bl.ocks.org/mbostock/2206590
+
+function clicked(d) {
+  var x, y, k;
+
+  if (d && centered !== d) {
+    var centroid = geoPath.centroid(d);
+    x = centroid[0];
+    y = centroid[1];
+    k = 4;
+    centered = d;
+  } else {
+    x = width / 2;
+    y = height / 2;
+    k = 1;
+    centered = null;
+  }
+
+  g.selectAll("path")
+      .classed("active", centered && function(d) { return d === centered; });
+
+  g.transition()
+      .duration(750)
+      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")");
+      //.style("stroke-width", 1.5 / k + "px");
+}
+
+// On before slide change
+$('#slick').on('beforeChange', function(event, slick, currentSlide, nextSlide){
+    year = years[nextSlide];
+    d3.json("iceland-" + year + "-simple2.json", process);    
+});
+
+$('#slick').slick({ 
+    arrows: true,
+    autoplay: true,
+    autoplaySpeed: duration*2,
+    prevArrow: $('.slick-prev'),
+    nextArrow: $('.slick-next') });
+
+var autoPlay = true;
+
+function toggle(button) {
+    if(autoPlay)    {
+        $('#slick').slick("slickPause");
+        d3.select(button).classed("fa-play-circle", true);
+        d3.select(button).classed("fa-pause-circle", false);
+        autoPlay = false;
+    }
+    else {
+        $('#slick').slick("slickPlay");
+        d3.select(button).classed("fa-play-circle", false);
+        d3.select(button).classed("fa-pause-circle", true);
+        autoPlay = true;
+    }
+}
+
+	</script>
+
+</body>
+</html>
